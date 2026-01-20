@@ -1,4 +1,4 @@
-"""Shim for running the CLI when this repository is checked out."""
+"""Enable `python -m git_nl`."""
 
 from git_nl.cli import main
 

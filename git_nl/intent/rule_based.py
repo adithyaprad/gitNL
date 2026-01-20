@@ -89,7 +89,10 @@ class RuleBasedIntentDetector:
                     "save changes",
                     "record changes",
                 ],
-                regexes=[re.compile(r"\bcommit\b")],
+                regexes=[
+                    re.compile(r"\bcommit\b"),
+                    re.compile(r"\bsave\b.*\bchanges\b"),
+                ],
                 reason="User asked to create a commit.",
             ),
             RuleDefinition(

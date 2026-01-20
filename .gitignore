@@ -46,3 +46,5 @@ agentic_rag/
 .cursor/
 
 gitenv/
+
+git_nl.egg-info/

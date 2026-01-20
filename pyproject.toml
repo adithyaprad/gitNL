@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "git-nl"
+version = "0.1.0"
+description = "Deterministic natural-language Git CLI (Phase 1 prototype)"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Your Name" }]
+dependencies = []
+
+[project.scripts]
+git-nl = "git_nl.cli:main"
+
