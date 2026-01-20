@@ -37,7 +37,11 @@ class Planner:
         return Plan(intent=intent_result.intent, steps=steps, verification=verification)
 
     def _fill(self, command: str, entities: Dict[str, str], description: str) -> PlanStep:
-        filled = command.format(**entities) if entities else command
+        enriched = dict(entities or {})
+        msg = enriched.get("message", "").strip()
+        if not msg:
+            enriched["message"] = "test commit"
+        filled = command.format(**enriched) if enriched else command
         return PlanStep(command=filled, description=description)
 
     def _build_plans(self) -> Dict[str, Plan]:
@@ -60,7 +64,8 @@ class Planner:
                 intent="commit_changes",
                 steps=[
                     PlanStep(command="git status --short", description="Preview pending changes"),
-                    PlanStep(command='git commit -am "{message}"', description="Create commit with provided message"),
+                    PlanStep(command="git add -A", description="Stage all changes"),
+                    PlanStep(command='git commit -m "{message}"', description="Create commit with provided message"),
                 ],
                 verification=[
                     PlanStep(command="git log -1 --oneline", description="Verify commit was recorded"),
@@ -105,13 +110,12 @@ class Planner:
             "push_commit_to_origin": Plan(
                 intent="push_commit_to_origin",
                 steps=[
+                    PlanStep(command="git status --short", description="Preview working tree before push"),
                     PlanStep(command="git push origin HEAD", description="Push current HEAD to origin"),
                 ],
                 verification=[
-                    PlanStep(
-                        command="git status --short",
-                        description="Ensure working tree clean after push",
-                    ),
+                    PlanStep(command="git status --short", description="Ensure working tree clean after push"),
+                    PlanStep(command="git ls-remote --heads origin", description="Confirm branches present on origin"),
                 ],
             ),
         }

@@ -65,6 +65,9 @@ class RuleBasedIntentDetector:
         """Rules derived from the PRD-supported Phase-1 actions."""
         branch_pattern = re.compile(r"\b(?:branch|checkout|switch|to)\s+(?P<branch>[A-Za-z0-9._\-/]+)")
         push_pattern = re.compile(r"\b(?:push|publish|send)\s+(?P<branch>[A-Za-z0-9._\-/]+)")
+        message_pattern = re.compile(
+            r"\b(?:with\s+(?:the\s+)?message|message|msg)\s+(?P<message>['\"]?[^'\"]+['\"]?)", re.IGNORECASE
+        )
 
         return [
             RuleDefinition(
@@ -83,6 +86,33 @@ class RuleBasedIntentDetector:
                 reason="Explicit request to undo the last commit while keeping changes.",
             ),
             RuleDefinition(
+                intent="push_commit_to_origin",
+                must_include_any=[
+                    "push commit",
+                    "push the commit",
+                    "push my commit",
+                    "push this commit",
+                    "push latest commit",
+                    "push commit to origin",
+                    "push commit to remote",
+                    "push changes",
+                    "send changes",
+                ],
+                regexes=[re.compile(r"\bpush\b.*\b(origin|remote|commit|changes)\b")],
+                reason="User asked to push commits to the remote origin.",
+            ),
+            RuleDefinition(
+                intent="push_branch",
+                must_include_any=[
+                    "push branch",
+                    "publish branch",
+                    "send branch",
+                ],
+                regexes=[re.compile(r"\b(push|publish|send)\b.*\bbranch\b")],
+                entity_patterns={"branch": push_pattern},
+                reason="User asked to push a branch to origin.",
+            ),
+            RuleDefinition(
                 intent="commit_changes",
                 must_include_any=[
                     "commit",
@@ -93,6 +123,7 @@ class RuleBasedIntentDetector:
                     re.compile(r"\bcommit\b"),
                     re.compile(r"\bsave\b.*\bchanges\b"),
                 ],
+                entity_patterns={"message": message_pattern},
                 reason="User asked to create a commit.",
             ),
             RuleDefinition(
@@ -117,27 +148,6 @@ class RuleBasedIntentDetector:
                 regexes=[re.compile(r"\b(switch|checkout|change|go)\b.*\bbranch\b")],
                 entity_patterns={"branch": branch_pattern},
                 reason="User asked to switch branches.",
-            ),
-            RuleDefinition(
-                intent="push_branch",
-                must_include_any=[
-                    "push branch",
-                    "publish branch",
-                    "send branch",
-                ],
-                regexes=[re.compile(r"\b(push|publish|send)\b.*\bbranch\b")],
-                entity_patterns={"branch": push_pattern},
-                reason="User asked to push a branch to origin.",
-            ),
-            RuleDefinition(
-                intent="push_commit_to_origin",
-                must_include_any=[
-                    "push commit",
-                    "push changes",
-                    "send changes",
-                ],
-                regexes=[re.compile(r"\bpush\b.*\b(origin|remote|commit|changes)\b")],
-                reason="User asked to push commits to the remote origin.",
             ),
         ]
 
