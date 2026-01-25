@@ -30,7 +30,7 @@ USER_PROMPT_TEMPLATE = """User input:
 {user_input}
 
 Allowed intents:
-{allowed_intents} -> var
+{allowed_intents}
 
 Return format:
 {{

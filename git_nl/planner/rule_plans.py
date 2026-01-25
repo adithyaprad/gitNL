@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, List
 
+from git_nl import config
 from git_nl.definitions.types import IntentResult
 
 
@@ -40,7 +41,10 @@ class Planner:
         enriched = dict(entities or {})
         msg = enriched.get("message", "").strip()
         if not msg:
-            enriched["message"] = "test commit"
+            enriched["message"] = config.DEFAULT_COMMIT_MESSAGE
+        branch = enriched.get("branch", "").strip()
+        if not branch:
+            enriched["branch"] = config.DEFAULT_BRANCH
         filled = command.format(**enriched) if enriched else command
         return PlanStep(command=filled, description=description)
 
