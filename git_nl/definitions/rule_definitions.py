@@ -1,4 +1,4 @@
-"""Rule-based intent detection based on the Phase-1 PRD."""
+"""Rule-based intent detection based - defines every rule intent, must include keywords, regex and reason. rename to rule_definitions.py. rename folder to definitions"""
 
 import re
 from dataclasses import dataclass, field

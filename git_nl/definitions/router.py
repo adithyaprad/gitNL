@@ -3,7 +3,7 @@
 from typing import Optional
 
 from git_nl import config
-from .rule_based import RuleBasedIntentDetector
+from .rule_definitions import RuleBasedIntentDetector
 from .types import IntentResult
 
 

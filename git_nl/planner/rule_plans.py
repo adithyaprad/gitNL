@@ -1,9 +1,9 @@
-"""Deterministic planner: intent -> ordered list of commands + verification."""
+"""Defines the plan for each intent, includes steps and verification commands. rename to rule_plans.py"""
 
 from dataclasses import dataclass, field
 from typing import Dict, List
 
-from git_nl.intent.types import IntentResult
+from git_nl.definitions.types import IntentResult
 
 
 @dataclass

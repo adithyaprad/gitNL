@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 from git_nl.executor import Executor
-from git_nl.intent.router import IntentRouter
+from git_nl.definitions.router import IntentRouter
 from git_nl.planner import Planner
 from git_nl.verifier import Verifier
 
@@ -15,7 +15,7 @@ def _print_result(title: str, payload: Any) -> None:
     print(json.dumps(payload, indent=2))
 
 
-def run(text: str, execute: bool, dry_run: bool) -> None:
+def run(text: str, execute: bool) -> None:
     router = IntentRouter()
     intent_result = router.route(text)
     _print_result("Intent", intent_result.__dict__)
@@ -34,7 +34,7 @@ def run(text: str, execute: bool, dry_run: bool) -> None:
         },
     )
 
-    executor = Executor(dry_run=dry_run or not execute)
+    executor = Executor(dry_run=not execute)
     verifier = Verifier(executor)
 
     exec_results = executor.run_plan(plan)
@@ -58,13 +58,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Natural-language git CLI (Phase 1) - rule-based intent demo.")
     parser.add_argument("text", help="Natural-language request, e.g., 'undo last commit but keep my changes'")
     parser.add_argument("--execute", action="store_true", help="Actually run commands (unsafe if not intended).")
-    parser.add_argument("--no-dry-run", action="store_true", help="Disable dry-run; applies only when --execute is set.")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    run(text=args.text, execute=args.execute, dry_run=not args.no_dry_run)
+    run(text=args.text, execute=args.execute)
 
 
 if __name__ == "__main__":
