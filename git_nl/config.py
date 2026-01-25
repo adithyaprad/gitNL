@@ -2,13 +2,17 @@
 
 SEMANTIC_CONFIDENCE_THRESHOLD = 0.80
 SEMANTIC_CONFIDENCE_BY_INTENT = {
-    "commit_changes": 0.60,
+    "commit_changes": 0.70,
     "undo_commit_soft": 0.80,
     "push_commit_to_origin": 0.80,
     "create_branch": 0.70,
     "switch_branch": 0.70,
     "push_branch": 0.80,
 }
-ENABLE_LLM_FALLBACK = False
+
+ENABLE_LLM_FALLBACK = True
+LLM_CONFIDENCE_THRESHOLD = 0.00
+LLM_TIMEOUT = 6.0
+
 DRY_RUN_DEFAULT = True
 

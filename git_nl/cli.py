@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import time
 from typing import Any
 
 from git_nl.executor import Executor
@@ -13,6 +14,28 @@ from git_nl.verifier import Verifier
 def _print_result(title: str, payload: Any) -> None:
     print(f"\n{title}:")
     print(json.dumps(payload, indent=2))
+
+
+def _format_command_results(results: list[Any]) -> list[dict[str, Any]]:
+    formatted = []
+    for r in results:
+        formatted.append(
+            {
+                "command": r.command,
+                "returncode": r.returncode,
+                "stdout": r.stdout,
+                "stderr": r.stderr,
+                "latency_ms": float(f"{r.latency_sec * 1000:.3f}"),
+            }
+        )
+    return formatted
+
+
+def _print_latency_summary(title: str, results: list[Any]) -> None:
+    if not results:
+        return
+    total_ms = sum(r.latency_sec for r in results) * 1000
+    print(f"{title} total latency: {total_ms:.1f} ms")
 
 
 def run(text: str, execute: bool) -> None:
@@ -42,8 +65,9 @@ def run(text: str, execute: bool) -> None:
     exec_results = executor.run_plan(plan)
     _print_result(
         "Execution",
-        [{"command": r.command, "returncode": r.returncode, "stdout": r.stdout, "stderr": r.stderr} for r in exec_results],
+        _format_command_results(exec_results),
     )
+    _print_latency_summary("Execution", exec_results)
 
     if exec_results and exec_results[-1].returncode != 0:
         print("\nExecution halted due to error; verification skipped.")
@@ -52,8 +76,9 @@ def run(text: str, execute: bool) -> None:
     verify_results = verifier.verify(plan)
     _print_result(
         "Verification",
-        [{"command": r.command, "returncode": r.returncode, "stdout": r.stdout, "stderr": r.stderr} for r in verify_results],
+        _format_command_results(verify_results),
     )
+    _print_latency_summary("Verification", verify_results)
 
 
 def parse_args() -> argparse.Namespace:
@@ -64,8 +89,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    started_at = time.perf_counter()
     args = parse_args()
     run(text=args.text, execute=args.execute)
+    total_ms = (time.perf_counter() - started_at) * 1000
+    print(f"\nTotal latency (CLI invocation -> completion): {total_ms:.3f} ms")
 
 
 if __name__ == "__main__":
