@@ -3,6 +3,7 @@
 from typing import Optional
 
 from git_nl import config
+from .llm import LLMIntentDetector
 from .rule_definitions import RuleBasedIntentDetector
 from .semantic import SEMANTIC_DETECTOR, SemanticIntentDetector
 from .types import IntentResult
@@ -11,9 +12,17 @@ from .types import IntentResult
 class IntentRouter:
     """Routes user input through rule -> semantic -> LLM (Phase-1)."""
 
-    def __init__(self, semantic_detector: SemanticIntentDetector = SEMANTIC_DETECTOR) -> None:
+    def __init__(
+        self,
+        semantic_detector: SemanticIntentDetector = SEMANTIC_DETECTOR,
+        llm_detector: LLMIntentDetector | None = None,
+    ) -> None:
         self.rule_detector = RuleBasedIntentDetector()
         self.semantic_detector = semantic_detector
+        self.llm_detector = llm_detector or LLMIntentDetector()
+        self.allowed_intents = sorted(
+            {rule.intent for rule in self.rule_detector.rules} | set(self.semantic_detector.catalog.keys())
+        )
 
     def route(self, text: str) -> IntentResult:
         """Route to the first confident intent. Semantic/LLM are placeholders."""
@@ -42,9 +51,12 @@ class IntentRouter:
                 ),
             )
 
+        llm_reason = "LLM fallback disabled."
         llm_result: Optional[IntentResult] = None
-        if config.ENABLE_LLM_FALLBACK and llm_result:
-            return llm_result
+        if config.ENABLE_LLM_FALLBACK:
+            llm_result, llm_reason = self.llm_detector.detect(text, allowed_intents=self.allowed_intents)
+            if llm_result:
+                return llm_result
 
         if semantic_match:
             semantic_debug = (
@@ -58,6 +70,6 @@ class IntentRouter:
             intent="unknown",
             confidence=0.0,
             source="none",
-            reason=f"No intent matched by rules; {semantic_debug}",
+            reason=f"No intent matched by rules; {semantic_debug} LLM fallback: {llm_reason}",
         )
 

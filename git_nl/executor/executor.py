@@ -1,6 +1,7 @@
 """Command executor with optional dry-run safety."""
 
 import subprocess
+import time
 from dataclasses import dataclass
 from typing import List
 
@@ -14,6 +15,7 @@ class CommandResult:
     returncode: int
     stdout: str
     stderr: str
+    latency_sec: float
 
 
 class Executor:
@@ -31,14 +33,19 @@ class Executor:
         return results
 
     def _run_command(self, command: str) -> CommandResult:
+        started_at = time.perf_counter()
+
         if self.dry_run:
-            return CommandResult(command=command, returncode=0, stdout="(dry-run)", stderr="")
+            latency_sec = time.perf_counter() - started_at
+            return CommandResult(command=command, returncode=0, stdout="(dry-run)", stderr="", latency_sec=latency_sec)
 
         completed = subprocess.run(command, shell=True, capture_output=True, text=True)
+        latency_sec = time.perf_counter() - started_at
         return CommandResult(
             command=command,
             returncode=completed.returncode,
             stdout=completed.stdout.strip(),
             stderr=completed.stderr.strip(),
+            latency_sec=latency_sec,
         )
 
