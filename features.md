@@ -48,6 +48,7 @@
 - Triggering words/sentences (must_include_any): `create branch`, `new branch`, `make branch`
 - Regex patterns: `\b(create|make|new)\b.*\bbranch\b`
 - Description: User asked to create a branch.
+- Branch name: if none provided, defaults to `default_branch` (CLI will note this and you can specify one).
 - Steps:
   - `git branch {branch}` — Create branch locally
 - Verifications:
@@ -57,6 +58,7 @@
 - Triggering words/sentences (must_include_any): `switch branch`, `checkout`, `change branch`, `go to branch`
 - Regex patterns: `\b(switch|checkout|change|go)\b.*\bbranch\b`
 - Description: User asked to switch branches.
+- Branch name: if none provided, defaults to `default_branch` (CLI will note this and you can specify one).
 - Steps:
   - `git switch {branch}` — Checkout the target branch
 - Verifications:
@@ -66,6 +68,7 @@
 - Triggering words/sentences (must_include_any): `push branch`, `publish branch`, `send branch`
 - Regex patterns: `\b(push|publish|send)\b.*\bbranch\b`
 - Description: User asked to push a branch to origin.
+- Branch name: if none provided, defaults to `default_branch` (CLI will note this and you can specify one).
 - Steps:
   - `git push -u origin {branch}` — Push branch to origin with upstream
 - Verifications:

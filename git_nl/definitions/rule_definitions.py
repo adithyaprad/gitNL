@@ -52,19 +52,36 @@ class RuleBasedIntentDetector:
         for rule in self.rules:
             if rule.matches(normalized):
                 entities = rule.extract_entities(text)
+                # Default branch handling when the user omitted a branch name.
+                if rule.intent in {"create_branch", "switch_branch", "push_branch"}:
+                    missing_branch = not entities.get("branch") or entities.get("branch", "").lower() == "branch"
+                    if missing_branch:
+                        entities["branch"] = "default_branch"
+                        reason = "Branch name not provided; defaulting to 'default_branch' unless a name is specified."
+                    else:
+                        reason = rule.reason or f"Rule matched for intent '{rule.intent}'."
+                else:
+                    reason = rule.reason or f"Rule matched for intent '{rule.intent}'."
+
                 return IntentResult(
                     intent=rule.intent,
                     confidence=1.0,
                     source="rule",
                     entities=entities,
-                    reason=rule.reason or f"Rule matched for intent '{rule.intent}'.",
+                    reason=reason,
                 )
         return None
 
     def _build_rules(self) -> List[RuleDefinition]:
         """Rules derived from the PRD-supported Phase-1 actions."""
-        branch_pattern = re.compile(r"\b(?:branch|checkout|switch|to)\s+(?P<branch>[A-Za-z0-9._\-/]+)")
-        push_pattern = re.compile(r"\b(?:push|publish|send)\s+(?P<branch>[A-Za-z0-9._\-/]+)")
+        branch_pattern = re.compile(
+            r"\b(?:branch|checkout|switch|to)\s+(?:branch\s+)?(?P<branch>[A-Za-z0-9._\-/]+)",
+            re.IGNORECASE,
+        )
+        push_pattern = re.compile(
+            r"\b(?:push|publish|send)\s+(?:branch\s+)?(?P<branch>[A-Za-z0-9._\-/]+)",
+            re.IGNORECASE,
+        )
         message_pattern = re.compile(
             r"\b(?:with\s+(?:the\s+)?message|message|msg)\s+(?P<message>['\"]?[^'\"]+['\"]?)", re.IGNORECASE
         )
