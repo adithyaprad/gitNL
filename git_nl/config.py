@@ -16,3 +16,6 @@ LLM_TIMEOUT = 6.0
 
 DRY_RUN_DEFAULT = True
 
+# Defaults inserted when user omits values.
+DEFAULT_COMMIT_MESSAGE = "default_message"
+DEFAULT_BRANCH = "default_branch"

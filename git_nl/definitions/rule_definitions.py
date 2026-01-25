@@ -65,8 +65,8 @@ class RuleBasedIntentDetector:
                 if rule.intent in {"create_branch", "switch_branch", "push_branch"}:
                     missing_branch = not entities.get("branch") or entities.get("branch", "").lower() == "branch"
                     if missing_branch:
-                        entities["branch"] = "default_branch"
-                        reason = "Branch name not provided; defaulting to 'default_branch' unless a name is specified."
+                        entities["branch"] = config.DEFAULT_BRANCH
+                        reason = f"Branch name not provided; defaulting to '{config.DEFAULT_BRANCH}' unless a name is specified."
                     else:
                         reason = rule.reason or f"Rule matched for intent '{rule.intent}'."
                 else:
@@ -84,7 +84,7 @@ class RuleBasedIntentDetector:
     def _build_rules(self) -> List[RuleDefinition]:
         """Rules derived from the PRD-supported Phase-1 actions."""
         branch_pattern = re.compile(
-            r"\b(?:branch|checkout|switch|to)\s+(?:branch\s+)?(?P<branch>[A-Za-z0-9._\-/]+)",
+            r"\bbranch\s+(?:called|named|with\s+name\s+)?(?P<branch>[A-Za-z0-9._\-/]+)",
             re.IGNORECASE,
         )
         push_pattern = re.compile(
@@ -108,6 +108,8 @@ class RuleBasedIntentDetector:
                     re.compile(r"commit", re.IGNORECASE),
                     re.compile(r"save changes", re.IGNORECASE),
                     re.compile(r"record changes", re.IGNORECASE),
+                    # Broader match: any sentence containing commit/save/record (captures message if present).
+                    re.compile(r".*\b(commit|save|record)\b.*", re.IGNORECASE),
                 ],
                 entity_patterns={"message": message_pattern},
                 reason="User asked to create a commit.",
@@ -151,6 +153,11 @@ class RuleBasedIntentDetector:
                 fullmatch_regexes=[
                     re.compile(r"(create|make|new)\s+branch\s+(?P<branch>[a-z0-9._\-/]+)", re.IGNORECASE),
                     re.compile(r"(create|make|new)\s+branch", re.IGNORECASE),
+                    # Broader: any sentence asking to create/make a branch, capturing the branch name.
+                    re.compile(
+                        r".*\b(create|make|new)\s+(?:a\s+)?branch(?:\s+(?:called|named|with\s+name))?\s+(?P<branch>[A-Za-z0-9._\-/]+).*",
+                        re.IGNORECASE,
+                    ),
                 ],
                 entity_patterns={"branch": branch_pattern},
                 reason="User asked to create a branch.",
@@ -164,8 +171,12 @@ class RuleBasedIntentDetector:
                     "go to branch",
                 ],
                 fullmatch_regexes=[
-                    re.compile(r"(switch|checkout|change|go)\s+(to\s+)?branch\s+(?P<branch>[a-z0-9._\-/]+)", re.IGNORECASE),
+                    re.compile(r"(switch|checkout|change|go)\s+(to\s+)?branch\s+(?P<branch>[A-Za-z0-9._\-/]+)", re.IGNORECASE),
                     re.compile(r"(switch|checkout|change|go)\s+(to\s+)?branch", re.IGNORECASE),
+                    re.compile(
+                        r".*\b(switch|checkout|change|go)\s+(?:to\s+)?(?:the\s+)?branch(?:\s+(?:called|named|with\s+name))?\s+(?P<branch>[A-Za-z0-9._\-/]+).*",
+                        re.IGNORECASE,
+                    ),
                 ],
                 entity_patterns={"branch": branch_pattern},
                 reason="User asked to switch branches.",
@@ -178,7 +189,11 @@ class RuleBasedIntentDetector:
                     "send branch",
                 ],
                 fullmatch_regexes=[
-                    re.compile(r"(push|publish|send)\s+branch\s+(?P<branch>[a-z0-9._\-/]+)", re.IGNORECASE)
+                    re.compile(r"(push|publish|send)\s+branch\s+(?P<branch>[A-Za-z0-9._\-/]+)", re.IGNORECASE),
+                    re.compile(
+                        r".*\b(push|publish|send)\s+(?:my\s+)?branch(?:\s+(?:called|named|with\s+name))?\s+(?P<branch>[A-Za-z0-9._\-/]+).*",
+                        re.IGNORECASE,
+                    ),
                 ],
                 entity_patterns={"branch": push_pattern},
                 reason="User asked to push a branch to origin.",
