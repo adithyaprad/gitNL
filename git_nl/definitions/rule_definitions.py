@@ -9,7 +9,17 @@ from .types import IntentResult
 
 def _normalize(text: str) -> str:
     """Lowercase, strip punctuation, collapse whitespace for deterministic matching."""
+    CONTRACTIONS = {
+        "i've": "i have",
+        "ive": "i have",
+        "can't": "cannot",
+        "don't": "do not",
+    }
+
     lowered = text.lower()
+    for k, v in CONTRACTIONS.items():
+        lowered = re.sub(rf"\b{k}\b", v, lowered)
+
     cleaned = re.sub(r"[^a-z0-9\s\-/\.]", " ", lowered)
     return re.sub(r"\s+", " ", cleaned).strip()
 
@@ -17,20 +27,19 @@ def _normalize(text: str) -> str:
 @dataclass
 class RuleDefinition:
     intent: str
-    must_include_all: List[str] = field(default_factory=list)
-    must_include_any: List[str] = field(default_factory=list)
-    regexes: List[Pattern[str]] = field(default_factory=list)
+    exact_phrases: List[str] = field(default_factory=list)
+    fullmatch_regexes: List[Pattern[str]] = field(default_factory=list)
     entity_patterns: Dict[str, Pattern[str]] = field(default_factory=dict)
     reason: str = ""
 
     def matches(self, normalized_text: str) -> bool:
-        if self.must_include_all and not all(k in normalized_text for k in self.must_include_all):
-            return False
-        if self.must_include_any and not any(k in normalized_text for k in self.must_include_any):
-            return False
-        if self.regexes and not any(p.search(normalized_text) for p in self.regexes):
-            return False
-        return True
+        """Return True only when there is an exact phrase or full-string regex match."""
+        if self.exact_phrases and normalized_text in self.exact_phrases:
+            return True
+        for pattern in self.fullmatch_regexes:
+            if pattern.fullmatch(normalized_text):
+                return True
+        return False
 
     def extract_entities(self, original_text: str) -> Dict[str, str]:
         entities: Dict[str, str] = {}
@@ -88,23 +97,35 @@ class RuleBasedIntentDetector:
 
         return [
             RuleDefinition(
+                intent="commit_changes",
+                exact_phrases=[
+                    "commit",
+                    "commit changes",
+                    "save changes",
+                    "record changes",
+                ],
+                fullmatch_regexes=[
+                    re.compile(r"commit", re.IGNORECASE),
+                    re.compile(r"save changes", re.IGNORECASE),
+                    re.compile(r"record changes", re.IGNORECASE),
+                ],
+                entity_patterns={"message": message_pattern},
+                reason="User asked to create a commit.",
+            ),
+            RuleDefinition(
                 intent="undo_commit_soft",
-                must_include_any=[
+                exact_phrases=[
                     "undo last commit",
                     "undo previous commit",
                     "soft reset",
                     "reset soft",
                     "uncommit",
                 ],
-                regexes=[
-                    re.compile(r"\bundo\b.*\bcommit\b"),
-                    re.compile(r"\breset\b.*\bsoft\b"),
-                ],
                 reason="Explicit request to undo the last commit while keeping changes.",
             ),
             RuleDefinition(
                 intent="push_commit_to_origin",
-                must_include_any=[
+                exact_phrases=[
                     "push commit",
                     "push the commit",
                     "push my commit",
@@ -115,56 +136,52 @@ class RuleBasedIntentDetector:
                     "push changes",
                     "send changes",
                 ],
-                regexes=[re.compile(r"\bpush\b.*\b(origin|remote|commit|changes)\b")],
+                fullmatch_regexes=[
+                    re.compile(r"(push|send)\s+(latest\s+)?commit(\s+to\s+(origin|remote))?", re.IGNORECASE)
+                ],
                 reason="User asked to push commits to the remote origin.",
             ),
             RuleDefinition(
-                intent="push_branch",
-                must_include_any=[
-                    "push branch",
-                    "publish branch",
-                    "send branch",
-                ],
-                regexes=[re.compile(r"\b(push|publish|send)\b.*\bbranch\b")],
-                entity_patterns={"branch": push_pattern},
-                reason="User asked to push a branch to origin.",
-            ),
-            RuleDefinition(
-                intent="commit_changes",
-                must_include_any=[
-                    "commit",
-                    "save changes",
-                    "record changes",
-                ],
-                regexes=[
-                    re.compile(r"\bcommit\b"),
-                    re.compile(r"\bsave\b.*\bchanges\b"),
-                ],
-                entity_patterns={"message": message_pattern},
-                reason="User asked to create a commit.",
-            ),
-            RuleDefinition(
                 intent="create_branch",
-                must_include_any=[
+                exact_phrases=[
                     "create branch",
                     "new branch",
                     "make branch",
                 ],
-                regexes=[re.compile(r"\b(create|make|new)\b.*\bbranch\b")],
+                fullmatch_regexes=[
+                    re.compile(r"(create|make|new)\s+branch\s+(?P<branch>[a-z0-9._\-/]+)", re.IGNORECASE),
+                    re.compile(r"(create|make|new)\s+branch", re.IGNORECASE),
+                ],
                 entity_patterns={"branch": branch_pattern},
                 reason="User asked to create a branch.",
             ),
             RuleDefinition(
                 intent="switch_branch",
-                must_include_any=[
+                exact_phrases=[
                     "switch branch",
-                    "checkout",
+                    "checkout branch",
                     "change branch",
                     "go to branch",
                 ],
-                regexes=[re.compile(r"\b(switch|checkout|change|go)\b.*\bbranch\b")],
+                fullmatch_regexes=[
+                    re.compile(r"(switch|checkout|change|go)\s+(to\s+)?branch\s+(?P<branch>[a-z0-9._\-/]+)", re.IGNORECASE),
+                    re.compile(r"(switch|checkout|change|go)\s+(to\s+)?branch", re.IGNORECASE),
+                ],
                 entity_patterns={"branch": branch_pattern},
                 reason="User asked to switch branches.",
+            ),
+            RuleDefinition(
+                intent="push_branch",
+                exact_phrases=[
+                    "push branch",
+                    "publish branch",
+                    "send branch",
+                ],
+                fullmatch_regexes=[
+                    re.compile(r"(push|publish|send)\s+branch\s+(?P<branch>[a-z0-9._\-/]+)", re.IGNORECASE)
+                ],
+                entity_patterns={"branch": push_pattern},
+                reason="User asked to push a branch to origin.",
             ),
         ]
 

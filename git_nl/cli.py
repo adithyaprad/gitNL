@@ -18,6 +18,8 @@ def _print_result(title: str, payload: Any) -> None:
 def run(text: str, execute: bool) -> None:
     router = IntentRouter()
     intent_result = router.route(text)
+    route_used = intent_result.source or "unknown"
+    print(f"\nRoute used: {route_used}")
     _print_result("Intent", intent_result.__dict__)
 
     if intent_result.intent == "unknown":
