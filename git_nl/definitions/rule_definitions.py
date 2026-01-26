@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Pattern
 
+from git_nl import config
 from .types import IntentResult
 
 
@@ -62,7 +63,8 @@ class RuleBasedIntentDetector:
             if rule.matches(normalized):
                 entities = rule.extract_entities(text)
                 # Default branch handling when the user omitted a branch name.
-                if rule.intent in {"create_branch", "switch_branch", "push_branch"}:
+                branch_intents = {"create_branch", "switch_branch", "push_branch", "pull_origin", "rebase_branch"}
+                if rule.intent in branch_intents:
                     missing_branch = not entities.get("branch") or entities.get("branch", "").lower() == "branch"
                     if missing_branch:
                         entities["branch"] = config.DEFAULT_BRANCH
@@ -93,6 +95,15 @@ class RuleBasedIntentDetector:
         )
         message_pattern = re.compile(
             r"\b(?:with\s+(?:the\s+)?message|message|msg)\s+(?P<message>['\"]?[^'\"]+['\"]?)", re.IGNORECASE
+        )
+        pull_branch_pattern = re.compile(
+            r"\b(?:pull|sync|update)\s+(?:from\s+)?origin\s+(?P<branch>[A-Za-z0-9._\-/]+)", re.IGNORECASE
+        )
+        rebase_branch_pattern = re.compile(
+            r"\brebase\b.*\b(?:onto|on|with|against)\s+(?P<branch>[A-Za-z0-9._\-/]+)", re.IGNORECASE
+        )
+        reset_target_pattern = re.compile(
+            r"\breset\s+(?:--)?(?:soft|hard)?\s*(?:to\s+)?(?P<target>[A-Za-z0-9._\-/~^]+)", re.IGNORECASE
         )
 
         return [
@@ -197,6 +208,99 @@ class RuleBasedIntentDetector:
                 ],
                 entity_patterns={"branch": push_pattern},
                 reason="User asked to push a branch to origin.",
+            ),
+            RuleDefinition(
+                intent="pull_origin",
+                exact_phrases=[
+                    "pull",
+                    "pull origin",
+                    "pull latest",
+                    "git pull",
+                    "sync with origin",
+                ],
+                fullmatch_regexes=[
+                    re.compile(r"(git\s+)?pull(\s+origin(\s+(?P<branch>[A-Za-z0-9._\-/]+))?)?", re.IGNORECASE),
+                    re.compile(
+                        r"(pull|sync|update)\s+(from\s+)?origin(\s+(?P<branch>[A-Za-z0-9._\-/]+))?", re.IGNORECASE
+                    ),
+                ],
+                entity_patterns={
+                    "branch": pull_branch_pattern,
+                },
+                reason="User asked to pull the latest changes from origin.",
+            ),
+            RuleDefinition(
+                intent="stash_changes",
+                exact_phrases=[
+                    "stash",
+                    "stash changes",
+                    "stash my changes",
+                    "stash work",
+                    "stash current work",
+                ],
+                fullmatch_regexes=[
+                    re.compile(r"(git\s+)?stash(\s+push)?", re.IGNORECASE),
+                    re.compile(r"(stash|save)\s+(my\s+)?changes", re.IGNORECASE),
+                    re.compile(r"stash\s+(current\s+)?work", re.IGNORECASE),
+                ],
+                entity_patterns={"message": message_pattern},
+                reason="User asked to stash their uncommitted changes.",
+            ),
+            RuleDefinition(
+                intent="rebase_branch",
+                exact_phrases=[
+                    "rebase",
+                    "rebase branch",
+                    "rebase onto main",
+                    "rebase with main",
+                ],
+                fullmatch_regexes=[
+                    re.compile(
+                        r"rebase\s+(?:onto|on|with|against)\s+(?P<branch>[A-Za-z0-9._\-/]+)", re.IGNORECASE
+                    ),
+                    re.compile(r"rebase(\s+branch)?(\s+(?P<branch>[A-Za-z0-9._\-/]+))?", re.IGNORECASE),
+                ],
+                entity_patterns={"branch": rebase_branch_pattern},
+                reason="User asked to rebase the current branch onto another branch.",
+            ),
+            RuleDefinition(
+                intent="reset_soft",
+                exact_phrases=[
+                    "soft reset",
+                    "reset soft",
+                    "reset --soft",
+                    "soft reset last commit",
+                ],
+                fullmatch_regexes=[
+                    re.compile(
+                        r"(soft\s+reset|reset\s+(?:--)?soft)(\s+to\s+(?P<target>[A-Za-z0-9._\-/~^]+))?",
+                        re.IGNORECASE,
+                    ),
+                    re.compile(
+                        r"(undo|revert)\s+last\s+commit(\s+soft(ly)?)?",
+                        re.IGNORECASE,
+                    ),
+                ],
+                entity_patterns={"target": reset_target_pattern},
+                reason="User asked to soft reset to a previous commit while keeping changes staged.",
+            ),
+            RuleDefinition(
+                intent="reset_hard",
+                exact_phrases=[
+                    "hard reset",
+                    "reset hard",
+                    "reset --hard",
+                    "discard my changes",
+                ],
+                fullmatch_regexes=[
+                    re.compile(
+                        r"(hard\s+reset|reset\s+(?:--)?hard)(\s+to\s+(?P<target>[A-Za-z0-9._\-/~^]+))?",
+                        re.IGNORECASE,
+                    ),
+                    re.compile(r"(discard|drop)\s+changes", re.IGNORECASE),
+                ],
+                entity_patterns={"target": reset_target_pattern},
+                reason="User asked to hard reset and discard local changes.",
             ),
         ]
 

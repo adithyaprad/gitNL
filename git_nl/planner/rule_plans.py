@@ -25,26 +25,33 @@ class Planner:
 
     def __init__(self) -> None:
         self.intent_plans = self._build_plans()
+        self.intent_defaults = self._build_defaults()
 
     def build_plan(self, intent_result: IntentResult) -> Plan:
         if intent_result.intent not in self.intent_plans:
             raise ValueError(f"No plan defined for intent '{intent_result.intent}'.")
 
         template = self.intent_plans[intent_result.intent]
-        steps = [self._fill(step.command, intent_result.entities, step.description) for step in template.steps]
+        defaults = self.intent_defaults.get(intent_result.intent, {})
+        steps = [self._fill(step.command, intent_result.entities, step.description, defaults) for step in template.steps]
         verification = [
-            self._fill(step.command, intent_result.entities, step.description) for step in template.verification
+            self._fill(step.command, intent_result.entities, step.description, defaults)
+            for step in template.verification
         ]
         return Plan(intent=intent_result.intent, steps=steps, verification=verification)
 
-    def _fill(self, command: str, entities: Dict[str, str], description: str) -> PlanStep:
-        enriched = dict(entities or {})
+    def _fill(self, command: str, entities: Dict[str, str], description: str, defaults: Dict[str, str]) -> PlanStep:
+        enriched = dict(defaults or {})
+        enriched.update(entities or {})
         msg = enriched.get("message", "").strip()
         if not msg:
             enriched["message"] = config.DEFAULT_COMMIT_MESSAGE
         branch = enriched.get("branch", "").strip()
         if not branch:
             enriched["branch"] = config.DEFAULT_BRANCH
+        target = enriched.get("target", "").strip()
+        if not target:
+            enriched["target"] = (defaults or {}).get("target") or config.DEFAULT_RESET_TARGET
         filled = command.format(**enriched) if enriched else command
         return PlanStep(command=filled, description=description)
 
@@ -122,5 +129,80 @@ class Planner:
                     PlanStep(command="git ls-remote --heads origin", description="Confirm branches present on origin"),
                 ],
             ),
+            "pull_origin": Plan(
+                intent="pull_origin",
+                steps=[
+                    PlanStep(command="git status --short", description="Preview working tree before pulling"),
+                    PlanStep(command="git pull origin {branch}", description="Pull latest changes from origin"),
+                ],
+                verification=[
+                    PlanStep(command="git status --short", description="Ensure working tree clean after pull"),
+                    PlanStep(command="git log -1 --oneline", description="Inspect newest commit after pull"),
+                ],
+            ),
+            "stash_changes": Plan(
+                intent="stash_changes",
+                steps=[
+                    PlanStep(command="git status --short", description="Preview changes that will be stashed"),
+                    PlanStep(
+                        command='git stash push -m "{message}"',
+                        description="Stash uncommitted changes with a message",
+                    ),
+                ],
+                verification=[
+                    PlanStep(command="git stash list", description="Confirm stash entry was created"),
+                ],
+            ),
+            "rebase_branch": Plan(
+                intent="rebase_branch",
+                steps=[
+                    PlanStep(command="git status --short", description="Check working tree before rebase"),
+                    PlanStep(command="git fetch origin {branch}", description="Ensure upstream branch is up to date"),
+                    PlanStep(command="git rebase origin/{branch}", description="Rebase current branch onto target"),
+                ],
+                verification=[
+                    PlanStep(command="git status --short", description="Ensure working tree clean after rebase"),
+                    PlanStep(
+                        command="git log --oneline --decorate -5",
+                        description="Review recent history after rebase",
+                    ),
+                ],
+            ),
+            "reset_soft": Plan(
+                intent="reset_soft",
+                steps=[
+                    PlanStep(
+                        command="git reset --soft {target}",
+                        description="Move HEAD while keeping index and working tree",
+                    ),
+                ],
+                verification=[
+                    PlanStep(command="git rev-parse HEAD", description="Ensure HEAD moved to target"),
+                    PlanStep(command="git status --short", description="Confirm changes remain staged"),
+                ],
+            ),
+            "reset_hard": Plan(
+                intent="reset_hard",
+                steps=[
+                    PlanStep(
+                        command="git reset --hard {target}",
+                        description="Reset HEAD and working tree, discarding changes",
+                    ),
+                ],
+                verification=[
+                    PlanStep(command="git rev-parse HEAD", description="Ensure HEAD moved to target"),
+                    PlanStep(command="git status --short", description="Confirm working tree is clean"),
+                ],
+            ),
+        }
+
+    def _build_defaults(self) -> Dict[str, Dict[str, str]]:
+        """Per-intent defaults for entity substitution."""
+        return {
+            "pull_origin": {"branch": config.DEFAULT_BRANCH},
+            "rebase_branch": {"branch": config.DEFAULT_BRANCH},
+            "stash_changes": {"message": config.DEFAULT_STASH_MESSAGE},
+            "reset_soft": {"target": config.DEFAULT_RESET_TARGET_SOFT},
+            "reset_hard": {"target": config.DEFAULT_RESET_TARGET_HARD},
         }
 
