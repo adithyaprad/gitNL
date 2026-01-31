@@ -60,6 +60,17 @@ _ALLOWED_ENTITIES: Dict[str, set[str]] = {
 }
 
 
+def extract_entities_for_intent(intent: str, text: str) -> Dict[str, str]:
+    """Extract entities and filter them to the fields allowed for the intent."""
+    all_entities = extract_entities(text)
+    allowed = _ALLOWED_ENTITIES.get(intent)
+    if allowed is None:
+        return all_entities
+    if not allowed:
+        return {}
+    return {k: v for k, v in all_entities.items() if k in allowed}
+
+
 class RuleBasedIntentDetector:
     """Deterministic, low-latency intent detector using keywords and patterns."""
 
@@ -94,13 +105,7 @@ class RuleBasedIntentDetector:
 
     def _extract_for_intent(self, intent: str, text: str) -> Dict[str, str]:
         """Shared extraction, filtered to the entities relevant for the intent."""
-        all_entities = extract_entities(text)
-        allowed = _ALLOWED_ENTITIES.get(intent)
-        if allowed is None:
-            return all_entities
-        if not allowed:
-            return {}
-        return {k: v for k, v in all_entities.items() if k in allowed}
+        return extract_entities_for_intent(intent, text)
 
     def _build_rules(self) -> List[RuleDefinition]:
         """Rules derived from the PRD-supported Phase-1 actions."""

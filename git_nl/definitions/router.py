@@ -4,7 +4,7 @@ from typing import Optional
 
 from git_nl import config
 from .llm import LLMIntentDetector
-from .rule_definitions import RuleBasedIntentDetector
+from .rule_definitions import RuleBasedIntentDetector, extract_entities_for_intent
 from .semantic import SEMANTIC_DETECTOR, SemanticIntentDetector
 from .types import IntentResult
 
@@ -44,7 +44,7 @@ class IntentRouter:
                 intent=semantic_match.intent,
                 confidence=semantic_match.score,
                 source="semantic",
-                entities={},
+                entities=extract_entities_for_intent(semantic_match.intent, text),
                 reason=(
                     f"Matched semantic example '{semantic_match.text}' with similarity {semantic_match.score:.2f}; "
                     f"threshold {threshold:.2f}."
@@ -56,6 +56,7 @@ class IntentRouter:
         if config.ENABLE_LLM_FALLBACK:
             llm_result, llm_reason = self.llm_detector.detect(text, allowed_intents=self.allowed_intents)
             if llm_result:
+                llm_result.entities = extract_entities_for_intent(llm_result.intent, text)
                 return llm_result
 
         if semantic_match:
