@@ -41,6 +41,8 @@ def _strip_entities(text: str) -> str:
         r"\b(create|make|new)\s+(?:a\s+)?branch\s+(called|named)?\s*[A-Za-z0-9._\-/]+",
         r"\b(switch|checkout|change|go)\s+(to\s+)?(?:the\s+)?branch\s+[A-Za-z0-9._\-/]+",
         r"\b(push|publish|send)\s+(?:my\s+)?branch\s+[A-Za-z0-9._\-/]+",
+        r"\b(pull|sync|update)\s+(?:from\s+)?origin\s+[A-Za-z0-9._\-/]+",
+        r"\b(rebase)\b.*\b(?:onto|on|with|against)\s+[A-Za-z0-9._\-/]+",
     ]
     for pat in branch_patterns:
         text = re.sub(pat, r"\1 branch", text, flags=re.IGNORECASE)
@@ -123,6 +125,51 @@ SEMANTIC_CATALOG: Dict[str, List[str]] = {
         "push the feature branch",
         "upload my branch to the remote",
         "push the branch I am on",
+    ],
+
+    "pull_origin": [
+        "pull the latest from origin",
+        "update my branch from origin",
+        "git pull origin",
+        "sync with the remote main branch",
+        "pull changes from origin main",
+        "get the newest code from origin",
+    ],
+
+    "stash_changes": [
+        "stash my changes",
+        "stash the current work",
+        "save my changes without committing",
+        "stash everything for later",
+        "temporarily store my work",
+        "git stash push the changes",
+    ],
+
+    "rebase_branch": [
+        "rebase onto main",
+        "rebase with the develop branch",
+        "rebase my branch against origin main",
+        "rebase this branch onto default",
+        "apply rebase from main to my branch",
+        "git rebase origin main",
+    ],
+
+    "reset_soft": [
+        "soft reset the last commit",
+        "reset softly to the previous commit",
+        "undo last commit but keep changes",
+        "reset --soft head~1",
+        "soft reset while keeping the files",
+        "roll back softly one commit",
+    ],
+
+    "reset_hard": [
+        "hard reset my changes",
+        "reset everything to head",
+        "git reset --hard",
+        "discard my local changes",
+        "reset hard to origin main",
+        "wipe the working tree with a hard reset",
     ],
 }
 

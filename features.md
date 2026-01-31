@@ -73,3 +73,64 @@
   - `git push -u origin {branch}` — Push branch to origin with upstream
 - Verifications:
   - `git ls-remote --heads origin {branch}` — Confirm branch is present on origin
+
+## stash_changes
+- Triggering words/sentences (must_include_any): `stash`, `stash changes`, `stash my changes`, `stash work`, `stash current work`
+- Regex patterns: `\bstash\b`, `\bstash\b.*\bchanges\b`
+- Description: User asked to stash their uncommitted changes.
+- Steps:
+  - `git status --short` — Preview changes that will be stashed
+  - `git stash push -m "{message}"` — Stash uncommitted changes with a message
+- Verifications:
+  - `git stash list` — Confirm stash entry was created
+
+## rebase_branch
+- Triggering words/sentences (must_include_any): `rebase`, `rebase branch`, `rebase onto main`, `rebase with main`
+- Regex patterns: `\brebase\b.*\b(onto|on|with|against)\b`
+- Description: User asked to rebase the current branch onto another branch.
+- Branch name: if none provided, defaults to `default_branch`.
+- Steps:
+  - `git status --short` — Check working tree before rebase
+  - `git fetch origin {branch}` — Ensure upstream branch is up to date
+  - `git rebase origin/{branch}` — Rebase current branch onto target
+- Verifications:
+  - `git status --short` — Ensure working tree clean after rebase
+  - `git log --oneline --decorate -5` — Review recent history after rebase
+
+## Origin Commands
+
+## Pull origin
+- Triggering words/sentences (must_include_any): `pull origin`, `git pull`, `pull latest`, `sync with origin`, `update from origin`
+- Regex patterns: `\b(pull|sync|update)\b.*\borigin\b`
+- Description: User asked to pull the latest changes from origin.
+- Branch name: if none provided, defaults to `default_branch`.
+- Steps:
+  - `git status --short` — Preview working tree before pulling
+  - `git pull origin {branch}` — Pull latest changes from origin
+- Verifications:
+  - `git status --short` — Ensure working tree clean after pull
+  - `git log -1 --oneline` — Inspect newest commit after pull
+
+## Resets
+
+## reset_soft
+- Triggering words/sentences (must_include_any): `soft reset`, `reset soft`, `reset --soft`, `soft reset last commit`
+- Regex patterns: `\b(reset|soft)\b.*\bsoft\b`
+- Description: User asked to soft reset to a previous commit while keeping changes staged.
+- Target: if none provided, defaults to `HEAD~1`.
+- Steps:
+  - `git reset --soft {target}` — Move HEAD while keeping index and working tree
+- Verifications:
+  - `git rev-parse HEAD` — Ensure HEAD moved to target
+  - `git status --short` — Confirm changes remain staged
+
+## reset_hard
+- Triggering words/sentences (must_include_any): `hard reset`, `reset hard`, `reset --hard`, `discard my changes`
+- Regex patterns: `\b(reset|hard)\b.*\bhard\b`, `\bdiscard\b.*\bchanges\b`
+- Description: User asked to hard reset and discard local changes.
+- Target: if none provided, defaults to `HEAD`.
+- Steps:
+  - `git reset --hard {target}` — Reset HEAD and working tree, discarding changes
+- Verifications:
+  - `git rev-parse HEAD` — Ensure HEAD moved to target
+  - `git status --short` — Confirm working tree is clean
