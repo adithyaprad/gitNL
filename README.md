@@ -1,4 +1,4 @@
-# git-nl
+# gitNL
 Deterministic natural-language Git CLI.
 
 ## What it does
