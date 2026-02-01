@@ -89,7 +89,7 @@ class LLMIntentDetector:
         timeout: float = config.LLM_TIMEOUT,
     ) -> None:
         _load_env_from_file()
-        self.model = model or os.getenv("OPENROUTER_MODEL") or "meta-llama/llama-3.2-1b-instruct"
+        self.model = model or os.getenv("OPENROUTER_MODEL") or "google/gemini-2.5-flash-lite"
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
         self.api_base = (api_base or os.getenv("OPENROUTER_BASE_URL") or "https://openrouter.ai/api/v1").rstrip("/")
         self.timeout = timeout
