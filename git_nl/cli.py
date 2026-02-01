@@ -117,69 +117,80 @@ def _print_summary(
 
 
 def run(text: str, execute: bool, explain: bool, debug: bool) -> None:
-    started_at = time.perf_counter()
     router = IntentRouter()
     detect_started = time.perf_counter()
-    intent_result = router.route(text)
+    intent_results = router.route_many(text)
     detect_ms = (time.perf_counter() - detect_started) * 1000
-    route_used = intent_result.source or "unknown"
+    total_intents = len(intent_results)
+    for idx, intent_result in enumerate(intent_results):
+        detect_ms_for_intent = detect_ms if idx == 0 else 0.0
+        if total_intents > 1:
+            print(f"\n--- Intent {idx + 1}/{total_intents} ---")
 
-    exec_results: list[Any] = []
-    verify_results: list[Any] = []
-    exec_ms = 0.0
-    verify_ms = 0.0
+        route_used = intent_result.source or "unknown"
+        exec_results: list[Any] = []
+        verify_results: list[Any] = []
+        exec_ms = 0.0
+        verify_ms = 0.0
 
-    if explain or debug:
-        print(f"\nRoute used: {route_used}")
-    if debug:
-        _print_result("Intent", intent_result.__dict__)
-
-    if intent_result.intent != "unknown":
-        planner = Planner()
-        plan = planner.build_plan(intent_result)
-
+        if explain or debug:
+            print(f"\nRoute used: {route_used}")
         if debug:
-            _print_result(
-                "Plan",
-                {
-                    "intent": plan.intent,
-                    "steps": [s.command for s in plan.steps],
-                    "verification": [s.command for s in plan.verification],
-                },
-            )
+            _print_result("Intent", intent_result.__dict__)
 
-        executor = Executor(dry_run=not execute)
-        verifier = Verifier(executor)
-
-        exec_results = executor.run_plan(plan)
-        exec_ms = _sum_latency_ms(exec_results)
-
-        if debug:
-            _print_result("Execution", _format_command_results(exec_results))
-            _print_latency_summary("Execution", exec_results)
-
-        if not exec_results or exec_results[-1].returncode == 0:
-            verify_results = verifier.verify(plan)
-            verify_ms = _sum_latency_ms(verify_results)
+        if intent_result.intent != "unknown":
+            planner = Planner()
+            plan = planner.build_plan(intent_result)
 
             if debug:
-                _print_result("Verification", _format_command_results(verify_results))
-                _print_latency_summary("Verification", verify_results)
-        elif debug:
-            print("\nExecution halted due to error; verification skipped.")
+                _print_result(
+                    "Plan",
+                    {
+                        "intent": plan.intent,
+                        "steps": [s.command for s in plan.steps],
+                        "verification": [s.command for s in plan.verification],
+                    },
+                )
 
-    total_ms = (time.perf_counter() - started_at) * 1000
-    _print_summary(
-        intent_result=intent_result,
-        route_used=route_used,
-        detect_ms=detect_ms,
-        exec_ms=exec_ms,
-        verify_ms=verify_ms,
-        total_ms=total_ms,
-        exec_results=exec_results,
-        verify_results=verify_results,
-        dry_run=not execute,
-    )
+            executor = Executor(dry_run=not execute)
+            verifier = Verifier(executor)
+
+            exec_results = executor.run_plan(plan)
+            exec_ms = _sum_latency_ms(exec_results)
+
+            if debug:
+                _print_result("Execution", _format_command_results(exec_results))
+                _print_latency_summary("Execution", exec_results)
+
+            if not exec_results or exec_results[-1].returncode == 0:
+                verify_results = verifier.verify(plan)
+                verify_ms = _sum_latency_ms(verify_results)
+
+                if debug:
+                    _print_result("Verification", _format_command_results(verify_results))
+                    _print_latency_summary("Verification", verify_results)
+            elif debug:
+                print("\nExecution halted due to error; verification skipped.")
+
+        total_ms = detect_ms_for_intent + exec_ms + verify_ms
+        _print_summary(
+            intent_result=intent_result,
+            route_used=route_used,
+            detect_ms=detect_ms_for_intent,
+            exec_ms=exec_ms,
+            verify_ms=verify_ms,
+            total_ms=total_ms,
+            exec_results=exec_results,
+            verify_results=verify_results,
+            dry_run=not execute,
+        )
+
+        if intent_result.intent == "unknown":
+            break
+        if exec_results and exec_results[-1].returncode != 0:
+            break
+        if verify_results and verify_results[-1].returncode != 0:
+            break
 
 
 def parse_args() -> argparse.Namespace:
