@@ -5,12 +5,35 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "git-nl"
 version = "0.1.0"
-description = "Deterministic natural-language Git CLI (Phase 1 prototype)"
-readme = "README.md"
+description = "Deterministic CLI tool to execute Git commands from natural language with near-native performance."
+readme = "PYPI.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.9"
-authors = [{ name = "Your Name" }]
+authors = [{ name = "Adithya Pradeep" }]
 dependencies = []
+keywords = ["git", "cli", "natural-language", "automation"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Version Control :: Git",
+]
 
 [project.scripts]
 git-nl = "git_nl.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["git_nl*"]
+exclude = ["tests*"]
 
