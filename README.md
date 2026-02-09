@@ -1,5 +1,5 @@
 # gitNL
-### Case study - https://www.adithyapradeep.com/#projects/gitnl
+### Project Overview - https://www.adithyapradeep.com/#projects/gitnl
 
 Deterministic natural-language Git CLI.
 
